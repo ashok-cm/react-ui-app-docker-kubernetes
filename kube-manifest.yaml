@@ -1,0 +1,63 @@
+---
+  apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    name: react-ingress
+  spec:
+    ingressClassName: nginx
+    rules:
+      - http:
+          paths:
+            - path: /
+              pathType: Prefix
+              backend:
+                service:
+                  name: react-webapp-service
+                  port:
+                    number: 80
+--- 
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  labels: 
+    app.kubernetes.io/name: react-webapp
+  name: react-webapp
+spec: 
+  replicas: 3
+  selector: 
+    matchLabels: 
+      app.kubernetes.io/name: react-webapp
+  template: 
+    metadata: 
+      labels: 
+        app.kubernetes.io/name: react-webapp
+    spec: 
+      imagePullSecrets:
+        - name: ocirsecret
+      containers: 
+        - name: webapp
+          image: ${IMAGE_REGISTRY}:${BUILDRUN_HASH}
+          ports: 
+            - containerPort: 80
+              protocol: TCP
+              name: http
+---
+apiVersion: v1
+kind: Service
+metadata: 
+  labels: 
+    app.kubernetes.io/name: react-webapp
+  name: react-webapp-service
+  annotations:
+    service.beta.kubernetes.io/oci-load-balancer-shape: "flexible"
+    service.beta.kubernetes.io/oci-load-balancer-shape-flex-min: 10
+    service.beta.kubernetes.io/oci-load-balancer-shape-flex-max: 10
+spec: 
+  ports: 
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  selector: 
+    app.kubernetes.io/name: react-webapp
+  type: ClusterIP
